@@ -2,6 +2,7 @@
 # pip3 install scapy
 import argparse
 import ipaddress
+import logging
 import re
 import signal
 import subprocess
@@ -26,9 +27,10 @@ class Static_MAddr_Daemon():
     def __init__(self):
         signal.signal(signal.SIGINT, self.sigterm)
         signal.signal(signal.SIGTERM, self.sigterm)
+        self.logging_init()
 
     def receiver(self):
-        print(f'start for iface {self.iface}')
+        logging.debug(f'start for iface {self.iface}')
         # Look up multicast group address in name server and find out IP version
         addrinfo = socket.getaddrinfo(IPV6_ALLNODES_MCAST, None)[0]
 
@@ -52,7 +54,7 @@ class Static_MAddr_Daemon():
                 if ra:
                     self.act_on_ra(ra)
         except Terminating:
-            print('Exitting gracefully...')
+            logging.warning('Terminated, exitting gracefully...')
 
     def decode_ra(self, data):
         if data[0] != ICMPV6_TYPE_RA:
@@ -74,7 +76,7 @@ class Static_MAddr_Daemon():
         ip addr change 2001:db8:c001:ff00::6 preferred_lft forever dev br0.2
         ip addr change 2001:db8:c001:ff00::6 preferred_lft 0 dev br0.2
         """
-        print(f'Updating lifetime of address {address} on device {iface} to "{preferred}"')
+        logging.info(f'Updating lifetime of address {address} on device {iface} to "{preferred}"')
         cmd = f'ip -6 address change {address} preferred_lft {preferred} dev {iface}'
         result = subprocess.run(cmd.split(' '), stdout=subprocess.PIPE)
 
@@ -144,7 +146,7 @@ class Static_MAddr_Daemon():
         """
         addresses = self.load_addresses_for_iface(iface)
         for prefix in prefixes:
-            print(f'Processing prefix {prefix["prefix"]}, preferred {prefix["preferred"]}...')
+            logging.debug(f'Processing prefix {prefix["prefix"]}, preferred {prefix["preferred"]}...')
             for address in addresses:
                 if not address["address"] in prefix["prefix"]:
                     continue
@@ -154,7 +156,7 @@ class Static_MAddr_Daemon():
                     self.set_lifetime(iface, address["address"], 'forever')
 
     def act_on_ra(self, packet):
-        print('=== captured packet START ===')
+        logging.debug('=== captured packet START ===')
         icmpv6 = packet[ICMPv6ND_RA]
         prefixes = []
         for p in icmpv6.iterpayloads():
@@ -179,7 +181,7 @@ class Static_MAddr_Daemon():
             prefixes.append(prefix)
         if len(prefixes) > 0:
             self.process_prefixes_ifaces(prefixes, self.iface)
-        print('=== captured packet END ===')
+        logging.debug('=== captured packet END ===')
 
     @staticmethod
     def sigterm(x, y):
@@ -194,6 +196,13 @@ class Static_MAddr_Daemon():
 
     def get_interface(self):
         return self.iface
+
+    def logging_init(self):
+        logging.basicConfig(
+            level=logging.DEBUG,
+            datefmt='%Y-%m-%d %H:%M:%S',
+            format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+        )
 
 def main():
     daemon = Static_MAddr_Daemon()
