@@ -14,7 +14,7 @@ Wonder no more! Here's *the* solution to this problem.
 
 ### What's the ideal network set-up for the script to run?
 
-The script's ideal environment is when it runs on a host in the multihomed infrastructure similar to [RFC 7157, Section 3.1, Scenario 2](https://datatracker.ietf.org/doc/html/rfc7157#section-3.1). This time, we view the 
+The script's ideal environment is when it runs on a host in the multihomed infrastructure similar to [RFC 7157, Section 3.1, Scenario 2](https://datatracker.ietf.org/doc/html/rfc7157#section-3.1). We are focused on what's happening on both the gateway router and on the end host which has static IPv6 addresses from both prefixes configured on its interface towards the LAN.
 
 ```
                                            ___________
