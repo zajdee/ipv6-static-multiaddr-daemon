@@ -56,6 +56,37 @@ What does it do? Well, it listens for incoming router advertisements (you don't 
 
 In both cases, the **valid lifetime** values of static addresses are set to `forever`.
 
+### Real-life demo
+
+1. Two prefixes are delegated to the gateway:
+  1. `DelegatedA` is `2001:db8:babe:f200::/56`
+  2. `DelegatedB` is `2001:db8:c001::/48`
+2. The gateway builds two prefixes, one for each ISP:
+  1. `PfxA` is `2001:db8:babe:f200::/64`
+  2. `PfxB` is `2001:db8:c001:ff00::/64`
+3. The gateway picks the active upstream:
+  1. Upstream `B` is *active*
+  2. Upstream `A` is *standby*
+4. RA from the gateway to hosts on LAN contains two prefixes:
+  1. `PfxA=2001:db8:babe:f200::/64, PreferredLifetime=0`
+  2. `PfxB=2001:db8:c001:ff00::/64, PreferredLifetime=2700`
+5. On LAN, there's a host with two static IPs:
+  1. `2001:db8:babe:f200::dead/64`
+  2. `2001:db8:c001:ff00::dead/64`
+6. When the script on the end host is run and catches the first RA, it checks the `PreferredLifetime` as follows (and updates the value, if needed):
+  1. of `2001:db8:babe:f200::dead/64` to `0`
+  2. of `2001:db8:c001:ff00::dead/64` to `forever`
+7. `2001:db8:c001:ff00::dead/64` is now used for all outgoing traffic
+8. Upstream `B` becomes *standby* and upstream `A` becomes *active*
+9. RA from the gateway to hosts on LAN now contains the updated prefix set:
+  1. `PfxA=2001:db8:babe:f200::/64, PreferredLifetime=2700`
+  2. `PfxB=2001:db8:c001:ff00::/64, PreferredLifetime=0`
+10. As soon as the script on the end host captures the updated RA, it corrects `PreferredLifetime` of the addresses accordingly:
+  1. `2001:db8:babe:f200::dead/64` to `forever`
+  2. `2001:db8:c001:ff00::dead/64` to `0`
+11. `2001:db8:babe:f200::dead/64` is now used for all outgoing traffic
+12. The listen loop runs forever
+
 ### How to run the script
 
 You need Python 3 (which is assumed), and `scapy`. Install the dependencies using:
