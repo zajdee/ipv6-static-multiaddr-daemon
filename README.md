@@ -98,5 +98,5 @@ pip3 install -r requirements.txt
 The interface needs to be specified as a script argument, e.g. for `eth0` use:
 
 ```
-python3 static-multiaddr-daemon.py -i eth0
+python3 static_multiaddr_daemon.py -i eth0
 ```
