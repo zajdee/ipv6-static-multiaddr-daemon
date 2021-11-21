@@ -1,30 +1,34 @@
 #!/usr/bin/env python3
 # pip3 install scapy
-from scapy.layers.inet6 import *
+import argparse
 import ipaddress
+import re
 import signal
 import subprocess
-import re
 
-from pprint import pprint
-
+from scapy.layers.inet6 import *
 
 IP_ADDR_MATCHER = re.compile(
     r'inet6 (?P<address>[0-9a-f:]+)/(?P<netmask>[0-9]{1,3}) .*? preferred_lft (?P<preferred>(forever|\d+sec))',
     re.DOTALL | re.MULTILINE | re.I
 )
 
-IPV6_ALLNODES_MCAST='ff02::1'
-ICMPV6_TYPE_RA=134
+IPV6_ALLNODES_MCAST = 'ff02::1'
+ICMPV6_TYPE_RA = 134
 
 class Terminating(Exception):
     pass
 
 class Static_MAddr_Daemon():
-    def __init__(self, iface=None):
-        self.iface = iface
+
+    iface = None
+
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.sigterm)
+        signal.signal(signal.SIGTERM, self.sigterm)
 
     def receiver(self):
+        print(f'start for iface {self.iface}')
         # Look up multicast group address in name server and find out IP version
         addrinfo = socket.getaddrinfo(IPV6_ALLNODES_MCAST, None)[0]
 
@@ -177,17 +181,24 @@ class Static_MAddr_Daemon():
             self.process_prefixes_ifaces(prefixes, self.iface)
         print('=== captured packet END ===')
 
-def sigterm(x, y):
-    raise Terminating()
+    @staticmethod
+    def sigterm(x, y):
+        raise Terminating()
 
-def sigint(signal, frame):
-    raise Terminating()
+    def parse_args(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-i', '--interface', type=str, required=True)
+        args = parser.parse_args()
+        self.iface = args.interface
+        return args
 
-signal.signal(signal.SIGINT, sigint)
-signal.signal(signal.SIGTERM, sigterm)
+    def get_interface(self):
+        return self.iface
 
-iface = 'br0.2'
-print(f'start for iface {iface}')
-daemon = Static_MAddr_Daemon(iface=iface)
-daemon.receiver()
-print('end')
+def main():
+    daemon = Static_MAddr_Daemon()
+    daemon.parse_args()
+    daemon.receiver()
+
+if __name__ == "__main__":
+    main()
